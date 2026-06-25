@@ -33,10 +33,14 @@ class TossInvestClient:
         self.settings = settings
         self._token: AccessToken | None = None
 
-    def get_access_token(self) -> str:
-        if self._token is not None and self._token.is_valid:
+    def invalidate_access_token(self) -> None:
+        self._token = None
+
+    def get_access_token(self, *, force_refresh: bool = False) -> str:
+        if not force_refresh and self._token is not None and self._token.is_valid:
             return self._token.value
 
+        self.invalidate_access_token()
         payload = urllib.parse.urlencode(
             {
                 "grant_type": "client_credentials",
@@ -94,7 +98,45 @@ class TossInvestClient:
             headers["X-Tossinvest-Account"] = self.settings.account
 
         body = json.dumps(payload).encode() if payload is not None else None
-        return self._send_raw(method, path, query=query, body=body, headers=headers)
+        return self._request_with_token_retry(
+            method,
+            path,
+            query=query,
+            body=body,
+            headers=headers,
+        )
+
+    def _request_with_token_retry(
+        self,
+        method: str,
+        path: str,
+        *,
+        query: dict[str, Any] | None,
+        body: bytes | None,
+        headers: dict[str, str],
+    ) -> dict[str, Any]:
+        try:
+            return self._send_raw(method, path, query=query, body=body, headers=headers)
+        except TossInvestAPIError as error:
+            if not self._is_invalid_token_error(error):
+                raise
+            self.invalidate_access_token()
+            headers = dict(headers)
+            headers["Authorization"] = f"Bearer {self.get_access_token()}"
+            return self._send_raw(method, path, query=query, body=body, headers=headers)
+
+    @staticmethod
+    def _is_invalid_token_error(error: TossInvestAPIError) -> bool:
+        if error.status != 401:
+            return False
+        try:
+            body = json.loads(error.body)
+        except json.JSONDecodeError:
+            return "invalid-token" in error.body
+        api_error = body.get("error")
+        if isinstance(api_error, dict):
+            return api_error.get("code") == "invalid-token"
+        return api_error in {"invalid_token", "invalid-token"}
 
     def _send_raw(
         self,
