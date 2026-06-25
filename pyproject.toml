@@ -8,6 +8,9 @@ dependencies = []
 [project.scripts]
 toss-trader = "toss_auto_traders.cli:main"
 
+[tool.setuptools.package-data]
+"toss_auto_traders.web" = ["dashboard.html"]
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
