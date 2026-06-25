@@ -58,3 +58,26 @@ class OrderAPI:
             endpoints.ORDER_CANCEL.format(order_id=order_id),
             account_required=True,
         )
+
+    def list_orders(self, *, status: str = "OPEN", symbol: str | None = None) -> dict[str, Any]:
+        query: dict[str, Any] = {"status": status}
+        if symbol:
+            query["symbol"] = symbol
+        return self.client.get(endpoints.ORDERS, query=query, account_required=True)
+
+    def get_buying_power(self, *, currency: str = "KRW") -> dict[str, Any]:
+        return self.client.get(
+            endpoints.BUYING_POWER,
+            query={"currency": currency},
+            account_required=True,
+        )
+
+    def get_sellable_quantity(self, symbol: str) -> dict[str, Any]:
+        return self.client.get(
+            endpoints.SELLABLE_QUANTITY,
+            query={"symbol": symbol},
+            account_required=True,
+        )
+
+    def get_commissions(self) -> dict[str, Any]:
+        return self.client.get(endpoints.COMMISSIONS, account_required=True)
