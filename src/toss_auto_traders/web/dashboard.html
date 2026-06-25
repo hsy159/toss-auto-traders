@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Toss Auto Traders</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --bg-elevated: #121820;
+      --card: #161d27;
+      --card-hover: #1b2430;
+      --text: #e8edf5;
+      --muted: #8b97a8;
+      --line: #273142;
+      --blue: #4c8dff;
+      --blue-soft: rgba(76, 141, 255, 0.14);
+      --green: #3dd68c;
+      --red: #ff6b7a;
+      --warn: #ffb020;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #121926 0%, var(--bg) 45%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0; font-size: 24px; }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .actions, .toolbar, .nav, .market-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    button, input, select {
+      font: inherit;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      padding: 10px 14px;
+      background: var(--card);
+      color: var(--text);
+    }
+    button {
+      cursor: pointer;
+      background: var(--blue);
+      color: white;
+      border-color: transparent;
+    }
+    button.secondary, .tab-btn, .market-tab {
+      background: var(--card);
+      color: var(--text);
+      border-color: var(--line);
+    }
+    button.secondary:hover, .tab-btn:hover, .market-tab:hover {
+      background: var(--card-hover);
+    }
+    .tab-btn.active, .market-tab.active {
+      background: var(--blue-soft);
+      color: var(--blue);
+      border-color: rgba(76, 141, 255, 0.35);
+    }
+    .page { display: none; }
+    .page.active { display: block; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .label { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .value { font-size: 22px; font-weight: 700; }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--blue-soft);
+      color: var(--blue);
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .badge.warn { background: rgba(255, 176, 32, 0.14); color: var(--warn); }
+    .table-wrap {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-size: 14px;
+    }
+    th { background: var(--bg-elevated); color: var(--muted); font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+    .error {
+      display: none;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255, 107, 122, 0.12);
+      color: var(--red);
+      border: 1px solid rgba(255, 107, 122, 0.25);
+      white-space: pre-wrap;
+    }
+    .api-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .api-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: var(--shadow);
+    }
+    .api-card .method {
+      font-size: 12px;
+      color: var(--blue);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .api-card .desc { color: var(--muted); font-size: 13px; min-height: 38px; }
+    .result-box {
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 13px;
+      color: #c7d2e0;
+      max-height: 520px;
+      overflow: auto;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1>Toss Auto Traders</h1>
+        <div class="sub">로컬 대시보드 · 읽기 전용</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="refreshBtn">새로고침</button>
+      </div>
+    </div>
+
+    <div class="nav" style="margin-bottom: 16px;">
+      <button class="tab-btn active" data-page="dashboard">대시보드</button>
+      <button class="tab-btn" data-page="api-test">API 테스트</button>
+    </div>
+
+    <div id="error" class="error"></div>
+
+    <section id="page-dashboard" class="page active">
+      <div class="card" style="margin-bottom: 16px;">
+        <div id="statusBadges"></div>
+      </div>
+
+      <div class="market-tabs" style="margin-bottom: 12px;">
+        <button class="market-tab active" data-market="ALL">전체</button>
+        <button class="market-tab" data-market="KR">국내</button>
+        <button class="market-tab" data-market="US">해외</button>
+      </div>
+
+      <div class="grid" id="summaryGrid"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>종목</th>
+              <th>시장</th>
+              <th class="num">수량</th>
+              <th class="num">현재가</th>
+              <th class="num">평가금액</th>
+              <th class="num">손익</th>
+              <th class="num">수익률</th>
+            </tr>
+          </thead>
+          <tbody id="holdingsBody">
+            <tr><td colspan="7">불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="page-api-test" class="page">
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>API 테스트</h2>
+        <div class="sub">버튼을 눌러 각 API 응답을 확인합니다. 주문 생성/취소는 포함하지 않습니다.</div>
+        <div class="toolbar" style="margin-top: 12px;">
+          <input id="apiSymbolInput" placeholder="심볼 (예: 005930, NVDA)" value="005930" />
+          <input id="apiSymbolsInput" placeholder="복수 심볼 (예: 005930,NVDA)" value="005930,NVDA" />
+          <select id="apiCurrencyInput">
+            <option value="KRW">KRW</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="api-grid" id="apiButtons"></div>
+
+      <div class="result-box">
+        <div class="label">응답 결과</div>
+        <pre id="apiResult">API 버튼을 눌러 테스트하세요.</pre>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const errorEl = document.getElementById("error");
+    const summaryGrid = document.getElementById("summaryGrid");
+    const holdingsBody = document.getElementById("holdingsBody");
+    const statusBadges = document.getElementById("statusBadges");
+    const apiResult = document.getElementById("apiResult");
+    const apiButtons = document.getElementById("apiButtons");
+
+    let dashboardData = null;
+    let activeMarket = "ALL";
+
+    const apiCatalog = [
+      { label: "상태", method: "GET", path: "/api/status", desc: "DRY_RUN, 계좌, 공인 IP" },
+      { label: "공인 IP", method: "GET", path: "/api/check-ip", desc: "현재 API 호출 IP 확인" },
+      { label: "토큰 발급", method: "GET", path: "/api/auth-token", desc: "토큰 재발급 (기존 토큰 무효화)" },
+      { label: "계좌 목록", method: "GET", path: "/api/accounts", desc: "연결된 계좌 조회" },
+      { label: "보유종목", method: "GET", path: "/api/holdings", desc: "보유 주식 전체 조회" },
+      { label: "현재가", method: "GET", path: "/api/price", desc: "단일 종목 현재가", needsSymbol: true },
+      { label: "호가", method: "GET", path: "/api/orderbook", desc: "단일 종목 호가", needsSymbol: true },
+      { label: "종목정보", method: "GET", path: "/api/stocks", desc: "종목 마스터 조회", needsSymbols: true },
+      { label: "환율", method: "GET", path: "/api/exchange-rate", desc: "USD → KRW 환율 (기본값)" },
+      { label: "국내 장", method: "GET", path: "/api/market-calendar/kr", desc: "KRX/NXT 장 운영 정보" },
+      { label: "해외 장", method: "GET", path: "/api/market-calendar/us", desc: "미국 장 운영 정보" },
+      { label: "주문 목록", method: "GET", path: "/api/orders", desc: "OPEN 상태 주문 (기본값)" },
+      { label: "매수가능금액", method: "GET", path: "/api/buying-power", desc: "통화별 매수 가능 금액", needsCurrency: true },
+      { label: "매도가능수량", method: "GET", path: "/api/sellable-quantity", desc: "종목별 매도 가능 수량", needsSymbol: true },
+      { label: "수수료", method: "GET", path: "/api/commissions", desc: "시장별 매매 수수료" },
+    ];
+
+    function showError(message) {
+      errorEl.style.display = "block";
+      errorEl.textContent = message;
+    }
+
+    function clearError() {
+      errorEl.style.display = "none";
+      errorEl.textContent = "";
+    }
+
+    function fmtNumber(value, digits = 0) {
+      const num = Number(value);
+      if (Number.isNaN(num)) return "-";
+      return num.toLocaleString("ko-KR", {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      });
+    }
+
+    function fmtRate(value) {
+      const num = Number(value) * 100;
+      if (Number.isNaN(num)) return "-";
+      const cls = num >= 0 ? "up" : "down";
+      const sign = num > 0 ? "+" : "";
+      return `<span class="${cls}">${sign}${num.toFixed(2)}%</span>`;
+    }
+
+    function summaryCard(label, value) {
+      return `<div class="card"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+    }
+
+    async function fetchJson(path) {
+      const response = await fetch(path);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(JSON.stringify(data, null, 2));
+      }
+      return data;
+    }
+
+    function renderStatus(status) {
+      const dryRun = status.dry_run ? "DRY_RUN" : "LIVE";
+      const dryClass = status.dry_run ? "badge warn" : "badge";
+      const rate = dashboardData?.exchangeRate || 0;
+      const rateBadge = rate > 0
+        ? `<span class="badge">환율 1 USD = ${fmtNumber(rate, 2)} KRW</span>`
+        : "";
+      statusBadges.innerHTML = `
+        <span class="${dryClass}">${dryRun}</span>
+        <span class="badge">계좌 ${status.account ?? "-"}</span>
+        <span class="badge">공인 IP ${status.public_ip ?? "-"}</span>
+        ${rateBadge}
+      `;
+    }
+
+    function renderSummary(market) {
+      const summary = dashboardData?.summary?.[market];
+      if (!summary) return;
+
+      const marketLabel = market === "ALL" ? "전체" : market === "KR" ? "국내" : "해외";
+      const digits = summary.digits ?? 0;
+      const currency = summary.currency ?? "KRW";
+      const profitRate = market === "ALL" ? summary.profitRate : summary.profitRate;
+      const dailyRate = market === "ALL" ? summary.dailyProfitRate : null;
+
+      summaryGrid.innerHTML = [
+        summaryCard(`${marketLabel} 평가금액 (${currency})`, fmtNumber(summary.marketValue, digits)),
+        summaryCard(`${marketLabel} 총 손익 (${currency})`, fmtNumber(summary.profitLoss, digits)),
+        summaryCard(`${marketLabel} 당일 손익 (${currency})`, fmtNumber(summary.dailyProfitLoss, digits)),
+        summaryCard(
+          `${marketLabel} 수익률`,
+          dailyRate !== null && market === "ALL"
+            ? `${fmtRate(profitRate)} <span class="sub">/ 당일 ${fmtRate(dailyRate)}</span>`
+            : fmtRate(profitRate)
+        ),
+      ].join("");
+    }
+
+    function formatNativeMoney(amount, item) {
+      const digits = item.currency === "USD" ? 2 : 0;
+      return `${fmtNumber(amount, digits)} ${item.currency || ""}`;
+    }
+
+    function renderHoldings(market) {
+      const items = (dashboardData?.items || []).filter((item) => {
+        if (market === "ALL") return true;
+        return item.marketCountry === market;
+      });
+
+      if (!items.length) {
+        holdingsBody.innerHTML = `<tr><td colspan="7">보유 종목이 없습니다.</td></tr>`;
+        return;
+      }
+
+      holdingsBody.innerHTML = items.map((item) => {
+        const digits = item.currency === "USD" ? 2 : 0;
+        const view = market === "ALL" ? item.krwView : null;
+        const lastPrice = view ? view.lastPrice : item.lastPrice;
+        const marketValue = view ? view.marketValue : item.marketValue?.amount;
+        const profitLoss = view ? view.profitLoss : item.profitLoss?.amount;
+        const displayCurrency = market === "ALL" ? "KRW" : item.currency;
+        const displayDigits = market === "ALL" ? 0 : digits;
+
+        const nativeHint = market === "ALL" && item.currency === "USD"
+          ? `<br /><span class="sub">${formatNativeMoney(item.marketValue?.amount, item)}</span>`
+          : "";
+        const nativeProfitHint = market === "ALL" && item.currency === "USD"
+          ? `<br /><span class="sub">${formatNativeMoney(item.profitLoss?.amount, item)}</span>`
+          : "";
+        const nativePriceHint = market === "ALL" && item.currency === "USD"
+          ? `<br /><span class="sub">${fmtNumber(item.lastPrice, digits)} USD</span>`
+          : "";
+
+        return `
+          <tr>
+            <td>
+              <strong>${item.name || item.symbol}</strong><br />
+              <span class="sub">${item.symbol}</span>
+            </td>
+            <td>${item.marketCountry || "-"}</td>
+            <td class="num">${fmtNumber(item.quantity, digits)}</td>
+            <td class="num">${fmtNumber(lastPrice, displayDigits)} ${displayCurrency}${nativePriceHint}</td>
+            <td class="num">${fmtNumber(marketValue, displayDigits)} ${displayCurrency}${nativeHint}</td>
+            <td class="num">${fmtNumber(profitLoss, displayDigits)} ${displayCurrency}${nativeProfitHint}</td>
+            <td class="num">${fmtRate(item.profitLoss?.rate)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderDashboardData() {
+      renderSummary(activeMarket);
+      renderHoldings(activeMarket);
+    }
+
+    async function loadDashboard() {
+      clearError();
+      holdingsBody.innerHTML = `<tr><td colspan="7">불러오는 중...</td></tr>`;
+      try {
+        const [status, dashboard] = await Promise.all([
+          fetchJson("/api/status"),
+          fetchJson("/api/dashboard"),
+        ]);
+        dashboardData = dashboard;
+        renderStatus(status);
+        renderDashboardData();
+      } catch (error) {
+        showError(String(error.message || error));
+        holdingsBody.innerHTML = `<tr><td colspan="7">데이터를 불러오지 못했습니다.</td></tr>`;
+      }
+    }
+
+    function buildApiPath(item) {
+      if (item.needsSymbol) {
+        const symbol = document.getElementById("apiSymbolInput").value.trim();
+        if (!symbol) throw new Error("심볼 입력이 필요합니다.");
+        return `${item.path}?symbol=${encodeURIComponent(symbol)}`;
+      }
+      if (item.needsSymbols) {
+        const symbols = document.getElementById("apiSymbolsInput").value.trim();
+        if (!symbols) throw new Error("복수 심볼 입력이 필요합니다.");
+        return `${item.path}?symbols=${encodeURIComponent(symbols)}`;
+      }
+      if (item.needsCurrency) {
+        const currency = document.getElementById("apiCurrencyInput").value;
+        return `${item.path}?currency=${encodeURIComponent(currency)}`;
+      }
+      return item.path;
+    }
+
+    async function runApiTest(item) {
+      clearError();
+      apiResult.textContent = "요청 중...";
+      try {
+        const path = buildApiPath(item);
+        const data = await fetchJson(path);
+        apiResult.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        apiResult.textContent = String(error.message || error);
+        showError(String(error.message || error));
+      }
+    }
+
+    function renderApiButtons() {
+      apiButtons.innerHTML = apiCatalog.map((item, index) => `
+        <div class="api-card">
+          <div class="method">${item.method} ${item.path}</div>
+          <strong>${item.label}</strong>
+          <div class="desc">${item.desc}</div>
+          <button class="secondary" data-api-index="${index}">테스트</button>
+        </div>
+      `).join("");
+
+      apiButtons.querySelectorAll("[data-api-index]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const item = apiCatalog[Number(button.dataset.apiIndex)];
+          runApiTest(item);
+        });
+      });
+    }
+
+    function switchPage(pageName) {
+      document.querySelectorAll(".page").forEach((page) => {
+        page.classList.toggle("active", page.id === `page-${pageName}`);
+      });
+      document.querySelectorAll(".tab-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.page === pageName);
+      });
+    }
+
+    document.querySelectorAll(".tab-btn").forEach((button) => {
+      button.addEventListener("click", () => switchPage(button.dataset.page));
+    });
+
+    document.querySelectorAll(".market-tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        activeMarket = button.dataset.market;
+        document.querySelectorAll(".market-tab").forEach((tab) => {
+          tab.classList.toggle("active", tab.dataset.market === activeMarket);
+        });
+        renderDashboardData();
+      });
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", loadDashboard);
+    renderApiButtons();
+    loadDashboard();
+  </script>
+</body>
+</html>
